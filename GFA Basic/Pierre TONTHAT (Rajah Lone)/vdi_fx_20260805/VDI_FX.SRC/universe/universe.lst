@@ -1,0 +1,665 @@
+$M 128000 $S> $F< $P< $%0 $*% $O3 $A2 $E$
+'
+REM #KEY ColdFire v4e|Classic 68K
+REM #IFK 0
+REM #BRK MA
+REM #EIK 1 ! ColdFire v4e
+REM #LIB ColdFire
+REM #EXT prx
+REM #EIK 2 ! Classic 68K
+REM #LIB 68000
+REM #EXT prg
+REM #FIK
+'
+IF FATAL
+  ~FORM_ALERT(1,"[1][ This version is not suited | for this CPU. Please get | the correct archive. ][ Ok ]")
+  @leave
+ENDIF
+IF ERR=8
+  ~FORM_ALERT(1,"[1][ Insuffisant or fragmented | memory ][ Ok ]")
+  @leave
+ELSE
+  init1
+  init2
+  main
+ENDIF
+'
+> PROCEDURE leave
+  IF offscreen_enabled!
+    V~H=off_handle&
+    ~V_CLSBM()
+    V~H=-1
+  ENDIF
+  @mxfree(offscreen_pointer%)
+  @mxfree(offscreen_work_buffer%)
+  '
+  @restore_colors
+  @close_win
+  @mxfree(palette%)
+  @mxfree(mfdb_screen%)
+  IF ressource!
+    ~MENU_BAR(ressource_menu%,0)
+    ~RSRC_FREE()
+  ENDIF
+  QUIT
+RETURN
+'
+> PROCEDURE init1
+  '
+  IF A~I<0 ! appl_init() failed?
+    @leave
+  ENDIF
+  '
+  IF _B=0
+    ~FORM_ALERT(1,"[1][ AES not initialized ][ Quit ]")
+    @leave
+  ENDIF
+  '
+  mx_mask%=@mx_mask
+  mxalloc!=(_GEMDOS>=&H19)
+  '
+  magic!=GETCOOKIE(CVL("MagX"))
+  mint!=(_MINT<>0) ! GETCOOKIE(CVL("MiNT"))
+  '
+  IF magic! OR mint!
+    naes!=TRUE
+  ELSE IF _AES>=&H399
+    naes!=TRUE
+  ELSE
+    naes!=FALSE
+  ENDIF
+  '
+  multi!=MULTITASK?
+  '
+  @declare
+  @declare_effect
+  IF mint!=FALSE
+    RESERVE 32000
+  ENDIF
+  @allocate
+  '
+  ~RSRC_FREE()
+  IF EXIST(ressource_file$)
+    IF RSRC_LOAD(ressource_file$)<>0
+      ~RSRC_GADDR(0,0,ressource_menu%)
+      ressource!=TRUE
+    ENDIF
+  ENDIF
+  '
+RETURN
+> PROCEDURE declare
+  '
+  general_path$=CURDIR$
+  '
+  ressource_file$=general_path$+"UNIVERSE.RSC"
+  ressource!=FALSE
+  ressource_menu%=0
+  '
+  preferences_file$=general_path$+"UNIVERSE.INF"
+  '
+  DIM boolean$(2)
+  boolean$(0)="FALSE"
+  boolean$(1)="TRUE"
+  '
+  hand_win&=0
+  xd&=0
+  yd&=0
+  wd&=0
+  hd&=0
+  wx&=_DX
+  wy&=_DY
+  ww&=_DW
+  wh&=_DH
+  win!=FALSE
+  aff!=FALSE
+  '
+  bitplane_number&=_B
+  '
+  pixel_width_micron&=WORK_OUT(3)
+  pixel_height_micron&=WORK_OUT(4)
+  '
+  force_memory_allocation!=TRUE
+  '
+  offscreen_enabled!=FALSE
+  offscreen_pointer%=0
+  '
+RETURN
+> PROCEDURE declare_offscreen(offscreen_width&,offscreen_height&)
+  LOCAL offscreen_size%
+  '
+  offscreen_enabled!=FALSE
+  '
+  offscreen_work_buffer%=@mxalloc(56,3)
+  IF offscreen_work_buffer%>0
+    '
+    pxy%=offscreen_work_buffer%
+    scr_mfdb%=ADD(pxy%,16)
+    off_mfdb%=ADD(scr_mfdb%,20)
+    '
+    LONG{ADD(scr_mfdb%,0)}=0
+    INT{ADD(scr_mfdb%,4)}=ADD(_DX,_DW)
+    INT{ADD(scr_mfdb%,6)}=ADD(_DY,_DH)
+    INT{ADD(scr_mfdb%,8)}=SHR&(ADD(INT{ADD(scr_mfdb%,4)},15),4)
+    INT{ADD(scr_mfdb%,10)}=0
+    INT{ADD(scr_mfdb%,12)}=bitplane_number&
+    INT{ADD(scr_mfdb%,14)}=0
+    INT{ADD(scr_mfdb%,16)}=0
+    INT{ADD(scr_mfdb%,18)}=0
+    '
+    IF force_memory_allocation!
+      '
+      offscreen_size%=SHR&(ADD(offscreen_width&,15),4)
+      MUL offscreen_size%,offscreen_height&
+      MUL offscreen_size%,2
+      IF NOT univers_monochrome!
+        MUL offscreen_size%,bitplane_number&
+      ENDIF
+      '
+      offscreen_pointer%=@mxalloc(ADD(offscreen_size%,32),3)
+      IF offscreen_pointer%<1
+        ~FORM_ALERT(1,"[1][ Not enough memory | for offscreen bitmap ][ Ok ]")
+        offscreen_size%=0
+      ENDIF
+    ENDIF
+    '
+    LONG{ADD(off_mfdb%,0)}=offscreen_pointer%
+    INT{ADD(off_mfdb%,4)}=offscreen_width&
+    INT{ADD(off_mfdb%,6)}=offscreen_height&
+    INT{ADD(off_mfdb%,8)}=SHR&(ADD(offscreen_width&,15),4)
+    INT{ADD(off_mfdb%,10)}=0
+    IF univers_monochrome!
+      INT{ADD(off_mfdb%,12)}=1
+    ELSE
+      INT{ADD(off_mfdb%,12)}=bitplane_number&
+    ENDIF
+    INT{ADD(off_mfdb%,14)}=0
+    INT{ADD(off_mfdb%,16)}=0
+    INT{ADD(off_mfdb%,18)}=0
+  ENDIF
+  '
+  IF GETCOOKIE(CVL("EdDI"))=TRUE AND offscreen_pointer%>0
+    '
+    INTIN(0)=1
+    INTIN(1)=1
+    INTIN(2)=1
+    INTIN(3)=1
+    INTIN(4)=1
+    INTIN(5)=1
+    INTIN(6)=1
+    INTIN(7)=1
+    INTIN(8)=0
+    INTIN(9)=0
+    INTIN(10)=2
+    INTIN(11)=PRED(offscreen_width&)
+    INTIN(12)=PRED(offscreen_height&)
+    INTIN(13)=pixel_width_micron&
+    INTIN(14)=pixel_height_micron&
+    INTIN(15)=0
+    INTIN(16)=0
+    INTIN(17)=0
+    INTIN(18)=0
+    INTIN(19)=0
+    '
+    off_handle&=V_OPNBM(off_mfdb%,GRAF_HANDLE())
+    '
+    offscreen_enabled!=(off_handle&>0)
+    '
+  ENDIF
+  '
+RETURN
+> PROCEDURE allocate
+  '
+  palette%=@mxalloc(1536,3)
+  '
+RETURN
+> PROCEDURE init2
+  mouse_free
+  '
+  ~VSF_INTERIOR(1)
+  ~VSF_STYLE(0)
+  ~VSF_COLOR(1)
+  ~VSF_PERIMETER(0)
+  IF offscreen_enabled!
+    V~H=off_handle&
+    ~VSF_INTERIOR(1)
+    ~VSF_STYLE(0)
+    ~VSF_COLOR(1)
+    ~VSF_PERIMETER(0)
+    V~H=-1
+  ENDIF
+  @save_colors
+  '
+  IF ressource!
+    ~MENU_IENABLE(ressource_menu%,3,0)
+    ~MENU_BAR(ressource_menu%,1)
+  ENDIF
+  IF multi!=FALSE
+    ~FORM_DIAL(3,0,0,0,0,_DX,_DY,_DW,_DH)
+  ENDIF
+  '
+RETURN
+'
+> PROCEDURE declare_effect
+  LOCAL pref_len%
+  '
+  IF EXIST(preferences_file$)
+    '
+    mem_pos%=0
+    '
+    file_handle&=FOPEN(preferences_file$,0)
+    IF file_handle&>0
+      '
+      pref_len%=FSEEK(0,file_handle&,2)
+      ~FSEEK(0,file_handle&,0)
+      '
+      IF pref_len%>0
+        mem_pos%=@mem_init(pref_len%)
+        '
+        IF mem_pos%>0
+          IF FREAD(file_handle&,pref_len%,mem_pos%)<>pref_len%
+            mem_pos%=@mem_close
+          ENDIF
+        ENDIF
+      ENDIF
+      ~FCLOSE(file_handle&)
+    ENDIF
+    '
+    IF mem_pos%>0
+      '
+      mem_start_ptr%=mem_pos%
+      mem_end_ptr%=ADD(mem_pos%,pref_len%)
+      DO
+        IF BYTE{mem_start_ptr%}=13 OR BYTE{mem_start_ptr%}=10
+          BYTE{mem_start_ptr%}=0
+        ENDIF
+        INC mem_start_ptr%
+      LOOP UNTIL mem_start_ptr%>mem_end_ptr%
+      mem_start_ptr%=mem_pos%
+      '
+      univers_delay&=MAX(0,MIN(VAL(@mem_find$("UNIVERSE_DELAY")),200))
+      univers_monochrome!=@mem_get_flag("UNIVERSE_USE_MONOCHROME",FALSE)
+      univers_force_offscreen!=@mem_get_flag("UNIVERSE_USE_OFFSCREEN",TRUE)
+      univers_keep_trace!=@mem_get_flag("UNIVERSE_KEEP_TRACE",FALSE)
+      IF @mem_find$("UNIVERSE_POPULATION")="?"
+        univers_population&=ADD(1,RND*16)
+      ELSE
+        univers_population&=MAX(1,MIN(VAL(@mem_find$("UNIVERSE_POPULATION")),16))
+      ENDIF
+      univers_dots!=@mem_get_flag("UNIVERSE_USE_DOTS",TRUE)
+      '
+    ENDIF
+    '
+    ~@mem_close
+    '
+  ELSE
+    '
+    univers_delay&=10
+    univers_monochrome!=FALSE
+    univers_force_offscreen!=FALSE
+    univers_keep_trace!=FALSE
+    univers_population&=6
+    univers_dots!=TRUE
+    '
+  ENDIF
+RETURN
+'
+> FUNCTION mem_init(mem_wished_len%)
+  $F%
+  ~@mem_close
+  mem_len%=MAX(16000,SHL(SHR(ADD(mem_wished_len%,31),4),4))
+  mem_start_adr%=@mxalloc(mem_len%,3)
+  IF mem_start_adr%<0
+    ' alert ?
+    mem_start_adr%=0
+  ENDIF
+  RETURN mem_start_adr%
+ENDFUNC
+> FUNCTION mem_close
+  $F%
+  IF mem_start_adr%>0
+    @mxfree(mem_start_adr%)
+    mem_start_adr%=0
+    mem_len%=0
+  ENDIF
+  RETURN 0
+ENDFUNC
+> FUNCTION mem_find$(mem_key$)
+  LOCAL mem_find_line$,mem_find_ptr%
+  IF mem_start_ptr%>0 AND mem_end_ptr%>mem_start_ptr%
+    mem_find_ptr%=mem_start_ptr%
+    DO
+      mem_find_line$=CHAR{mem_find_ptr%}
+      ADD mem_find_ptr%,SUCC(LEN(mem_find_line$))
+      '
+      IF INSTR(mem_find_line$,mem_key$+"=")=1
+        mem_str$=MID$(mem_find_line$,ADD(LEN(mem_key$),2))
+        mem_pos&=INSTR(mem_str$,"#")
+        IF mem_pos&>0
+          RETURN TRIM$(LEFT$(mem_str$,PRED(mem_pos&)))
+        ENDIF
+        RETURN TRIM$(mem_str$)
+      ENDIF
+      '
+    LOOP UNTIL mem_find_ptr%>=mem_end_ptr%
+  ENDIF
+  RETURN ""
+ENDFUNC
+> FUNCTION mem_get_flag(find_str$,default_flag!)
+  $F%
+  '
+  IF @mem_find$(find_str$)=boolean$(ABS(NOT default_flag!))
+    RETURN NOT default_flag!
+  ENDIF
+  RETURN default_flag!
+ENDFUNC
+'
+> PROCEDURE main
+  @create_win
+  @set_values
+  @v_hide_c
+  @clear_win
+  exit!=FALSE
+  '
+  IF offscreen_enabled!
+    V~H=off_handle&
+    '
+    ~VS_CLIP(1,0,0,PRED(wd&),PRED(hd&))
+    '
+    ~VSM_HEIGHT(1)
+    ~VSM_TYPE(1)
+    '
+    V~H=-1
+  ELSE
+    '
+    ~VS_CLIP(1,xd&,yd&,ADD(xd&,PRED(wd&)),ADD(yd&,PRED(hd&)))
+    '
+    ~VSM_HEIGHT(1)
+    ~VSM_TYPE(1)
+  ENDIF
+  '
+  DO
+    @draw_win
+  LOOP UNTIL exit!
+  '
+  IF offscreen_enabled!
+    V~H=off_handle&
+    ~VS_CLIP(0,0,0,PRED(wd&),PRED(hd&))
+    V~H=-1
+  ELSE
+    ~VS_CLIP(0,xd&,yd&,ADD(xd&,PRED(wd&)),ADD(yd&,PRED(hd&)))
+  ENDIF
+  '
+  @v_show_c
+  @leave
+RETURN
+'
+> PROCEDURE create_win
+  hand_win&=WIND_CREATE(&X0,30,30,30,30)
+  IF hand_win&>0
+    wx&=_DX
+    wy&=_DY
+    ww&=_DW
+    wh&=_DH
+    win!=TRUE
+    IF WIND_OPEN(hand_win&,wx&,wy&,ww&,wh&)=0
+      ~FORM_ALERT(1,"[1][ Can't open window ][ Quit ]")
+      @leave
+    ELSE
+      ~WIND_GET(hand_win&,4,xd&,yd&,wd&,hd&)
+    ENDIF
+  ELSE
+    ~FORM_ALERT(1,"[1][ No window available ][ Quit ]")
+    @leave
+  ENDIF
+  aff!=win!
+RETURN
+> PROCEDURE set_values
+  '
+  univers_n&=255
+  univers_s&=MAX(1,MIN(univers_population&,16))
+  univers_m&=PRED(univers_n&)
+  '
+  univers_cx&=DIV(wd&,2)
+  univers_cy&=DIV(hd&,2)
+  univers_sx&=univers_cx&*4/9
+  univers_sy&=univers_cy&*4/9
+  '
+  univers_t=0
+  univers_dt=PI/300
+  univers_r=PI*2/235
+  '
+  off_handle&=-1
+  offscreen_enabled!=FALSE
+  '
+  IF bitplane_number&<15
+    univers_monochrome!=TRUE
+  ENDIF
+  '
+  IF univers_force_offscreen!
+    @declare_offscreen(wd&,hd&)
+  ENDIF
+  '
+RETURN
+> PROCEDURE close_win
+  IF win!=TRUE
+    ~WIND_CLOSE(hand_win&)
+    ~WIND_DELETE(hand_win&)
+    win!=FALSE
+    aff!=FALSE
+  ENDIF
+RETURN
+> PROCEDURE clear_win
+  IF offscreen_enabled!
+    V~H=off_handle&
+    ~VSF_COLOR(1)
+    ~VS_CLIP(1,0,0,PRED(wd&),PRED(hd&))
+    ~V_BAR(0,0,PRED(wd&),PRED(hd&))
+    ~VS_CLIP(0,0,0,PRED(wd&),PRED(hd&))
+  ENDIF
+  V~H=-1
+  ~VSF_COLOR(1)
+  ~VS_CLIP(1,xd&,yd&,ADD(xd&,PRED(wd&)),ADD(yd&,PRED(hd&)))
+  ~V_BAR(xd&,yd&,ADD(xd&,PRED(wd&)),ADD(yd&,PRED(hd&)))
+  ~VS_CLIP(0,xd&,yd&,ADD(xd&,PRED(wd&)),ADD(yd&,PRED(hd&)))
+RETURN
+> PROCEDURE draw_win
+  LOCAL bar_x&,bar_y&
+  '
+  univers_x=0
+  univers_v=0
+  univers_u=0
+  '
+  IF univers_delay&>0
+    ~EVNT_TIMER(univers_delay&)
+  ENDIF
+  '
+  IF offscreen_enabled!
+    V~H=off_handle&
+    '
+    ~VSWR_MODE(1)
+    '
+    IF NOT univers_keep_trace!
+      ~VSF_COLOR(1)
+      ~V_BAR(0,0,PRED(wd&),PRED(hd&))
+    ENDIF
+    '
+    IF univers_monochrome!
+      IF univers_keep_trace!
+        ~VSWR_MODE(3)
+      ENDIF
+      ~VSF_COLOR(0)
+      ~VSM_COLOR(0)
+    ELSE
+      ~VSF_COLOR(16)
+      ~VSM_COLOR(16)
+    ENDIF
+    '
+    FOR i&=0 TO univers_m& STEP univers_s&
+      FOR j&=0 TO univers_m& STEP univers_s&
+        '
+        univers_u=SIN(i&+univers_v)+SIN(univers_r*i&+univers_x)
+        univers_v=COS(i&+univers_v)+COS(univers_r*i&+univers_x)
+        univers_x=univers_u+univers_t
+        '
+        IF NOT univers_monochrome!
+          ~VS_COLOR(16,RGB256TO1000(i&),RGB256TO1000(j&),RGB256TO1000(SUB(univers_n&,DIV(ADD(i&,j&),2))))
+        ENDIF
+        '
+        bar_x&=ADD(univers_cx&,INT(univers_sx&*univers_u))
+        bar_y&=ADD(univers_cy&,INT(univers_sy&*univers_v))
+        '
+        IF univers_dots!
+          PTSIN(0)=bar_x&
+          PTSIN(1)=bar_y&
+          ~V_PMARKER(1)
+        ELSE
+          ~V_CIRCLE(bar_x&,bar_y&,2)
+        ENDIF
+      NEXT j&
+      '
+      @test_exit
+      EXIT IF exit!
+      '
+    NEXT i&
+    '
+    V~H=-1
+    '
+    SET.SXYWH 0,0,wd&,hd&
+    SET.DXYWH xd&,yd&,wd&,hd&
+    '
+    IF univers_monochrome!
+      ~VRT_CPYFM(1,off_mfdb%,scr_mfdb%,1,0)
+    ELSE
+      ~VRO_CPYFM(3,off_mfdb%,scr_mfdb%)
+    ENDIF
+    '
+  ELSE
+    '
+    ~VSWR_MODE(1)
+    '
+    IF NOT univers_keep_trace!
+      ~VSF_COLOR(1)
+      ~V_BAR(xd&,yd&,ADD(xd&,PRED(wd&)),ADD(yd&,PRED(hd&)))
+    ENDIF
+    '
+    IF univers_monochrome!
+      IF univers_keep_trace!
+        ~VSWR_MODE(3)
+      ENDIF
+      ~VSF_COLOR(0)
+      ~VSM_COLOR(0)
+    ELSE
+      ~VSF_COLOR(16)
+      ~VSM_COLOR(16)
+    ENDIF
+    '
+    FOR i&=0 TO univers_m& STEP univers_s&
+      FOR j&=0 TO univers_m& STEP univers_s&
+        '
+        univers_u=SIN(i&+univers_v)+SIN(univers_r*i&+univers_x)
+        univers_v=COS(i&+univers_v)+COS(univers_r*i&+univers_x)
+        univers_x=univers_u+univers_t
+        '
+        IF NOT univers_monochrome!
+          ~VS_COLOR(16,RGB256TO1000(i&),RGB256TO1000(j&),RGB256TO1000(SUB(univers_n&,DIV(ADD(i&,j&),2))))
+        ENDIF
+        '
+        bar_x&=ADD(ADD(xd&,univers_cx&),INT(univers_sx&*univers_u))
+        bar_y&=ADD(ADD(yd&,univers_cy&),INT(univers_sy&*univers_v))
+        '
+        IF univers_dots!
+          PTSIN(0)=bar_x&
+          PTSIN(1)=bar_y&
+          ~V_PMARKER(1)
+        ELSE
+          ~V_CIRCLE(bar_x&,bar_y&,2)
+        ENDIF
+      NEXT j&
+      '
+      @test_exit
+      EXIT IF exit!
+      '
+    NEXT i&
+  ENDIF
+  '
+  univers_t=univers_t+univers_dt
+  '
+RETURN
+> PROCEDURE test_exit
+  ~GRAF_MKSTATE(gm_x&,gm_y&,gm_s&,gk_s&)
+  IF BCONSTAT(2) OR gm_s&>0 OR gk_s&>0
+    exit!=TRUE
+  ENDIF
+RETURN
+'
+> PROCEDURE restore_colors
+  LOCAL tmp_c&,tmp_d&,col_r&,col_g&,col_b&
+  '
+  IF palette%>0
+    FOR tmp_c&=0 TO 255
+      tmp_d&=MUL(tmp_c&,6)
+      col_r&=INT{ADD(palette%,tmp_d&)}
+      col_g&=INT{ADD(palette%,ADD(tmp_d&,2))}
+      col_b&=INT{ADD(palette%,ADD(tmp_d&,4))}
+      ~VS_COLOR(tmp_c&,col_r&,col_g&,col_b&)
+    NEXT tmp_c&
+  ENDIF
+RETURN
+> PROCEDURE save_colors
+  LOCAL tmp_c&,tmp_d&,col_r&,col_g&,col_b&
+  '
+  IF palette%>0
+    FOR tmp_c&=0 TO 255
+      ~VQ_COLOR(tmp_c&,0,col_r&,col_g&,col_b&)
+      tmp_d&=MUL(tmp_c&,6)
+      INT{ADD(palette%,tmp_d&)}=col_r&
+      INT{ADD(palette%,ADD(tmp_d&,2))}=col_g&
+      INT{ADD(palette%,ADD(tmp_d&,4))}=col_b&
+    NEXT tmp_c&
+  ENDIF
+RETURN
+'
+> PROCEDURE mouse_busy
+  ~GRAF_MOUSE(2,0)
+RETURN
+> PROCEDURE mouse_free
+  ~GRAF_MOUSE(0,0)
+RETURN
+'
+> PROCEDURE v_hide_c
+  IF naes!
+    GHIDEM
+  ELSE
+    ~V_HIDE_C()
+  ENDIF
+RETURN
+> PROCEDURE v_show_c
+  IF naes!
+    GSHOWM
+  ELSE
+    ~V_SHOW_C()
+  ENDIF
+RETURN
+'
+> FUNCTION mx_mask
+  $F%
+  IF MXALLOC(-1,0)=-32
+    RETURN 0
+  ELSE IF SYSCONF(-1)=-32
+    RETURN 3
+  ELSE
+    RETURN -1
+  ENDIF
+ENDFUNC
+> FUNCTION mxalloc(mxlen%,mxmode&)
+  $F%
+  IF mxalloc!
+    RETURN MXALLOC(mxlen%,mxmode&)
+  ENDIF
+  RETURN MALLOC(mxlen%)
+ENDFUNC
+> PROCEDURE mxfree(mx_adr%)
+  IF mx_adr%>0
+    ~MFREE(mx_adr%)
+  ENDIF
+RETURN

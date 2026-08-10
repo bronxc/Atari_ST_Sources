@@ -37,15 +37,6 @@
 [submodule "C/Anodyne/diamond-back"]
 	path = C/Anodyne/diamond-back
 	url = https://git.code.sf.net/p/diamond-back/code
-[submodule "ASM/SYNC/synctable"]
-	path = ASM/Synchron Assembly (SYNC)/synctable
-	url = https://github.com/troed/synctable
-[submodule "ASM/SYNC/CLOCK"]
-	path = ASM/Synchron Assembly (SYNC)/CLOCK
-	url = https://github.com/troed/CLOCK.git
-[submodule "ASM/SYNC/WSDETECT"]
-	path = ASM/Synchron Assembly (SYNC)/WSDETECT
-	url = https://github.com/troed/WSDETECT
 [submodule "GFA Basic/mmuman/gfalist"]
 	path = GFA Basic/mmuman/gfalist
 	url = https://github.com/mmuman/gfalist.git
@@ -139,9 +130,6 @@
 [submodule "C/Paradize/paradizelib"]
 	path = C/Paradize/paradizelib
 	url = https://github.com/simonsunnyboy/paradizelib.git
-[submodule "GFA Basic/Mike B Harris/fractal-explorer-for-atari-st"]
-	path = GFA Basic/Mike B Harris/fractal-explorer-for-atari-st
-	url = https://github.com/mikebharris/fractal-explorer-for-atari-st.git
 [submodule "C/Tony Aldridge/twitter-st"]
 	path = C/Tony Aldridge/twitter-st
 	url = https://github.com/AngryLawyer/twitter-st.git
@@ -286,9 +274,6 @@
 [submodule "GFA Basic/Manos Kantzos (sly m)/MANDELST"]
 	path = GFA Basic/Manos Kantzos (sly m)/MANDELST
 	url = https://github.com/manoosos/MANDELST.git
-[submodule "ASM/SYNC/DoubleST"]
-	path = ASM/Synchron Assembly (SYNC)/DoubleST
-	url = https://github.com/troed/DoubleST.git
 [submodule "ASM/Replicants/newcracks"]
 	path = ASM/Replicants/newcracks
 	url = https://github.com/orionfuzion/newcracks.git
@@ -776,9 +761,6 @@
 [submodule "C/Thomas Much/bubblegem"]
 	path = C/Thomas Much/bubblegem
 	url = https://github.com/thmuch/bubblegem.git
-[submodule "ASM/Black Scorpion Software/badmood"]
-	path = ASM/Black Scorpion Software (BSS)/badmood
-	url = https://bitbucket.org/d_m_l/badmood.git
 [submodule "C/Seg/nitecrwl"]
 	path = C/Seg/nitecrwl
 	url = https://github.com/SegHaxx/nitecrwl
@@ -1109,9 +1091,6 @@
 [submodule "ASM/Sector One/shifter_inside"]
 	url = https://codeberg.org/zerkman/shifter_inside
     path = ASM/Sector One/shifter_inside
-[submodule "ASM/Synchron Assembly (SYNC)/SYNC-scroll"]
-	path = ASM/Synchron Assembly (SYNC)/SYNC-scroll
-    url = https://codeberg.org/troed/SYNC-scroll
 [submodule "ASM/Sector One/mpp"]
 	path = ASM/Sector One/mpp
 	url = https://codeberg.org/zerkman/mpp.git
@@ -1207,3 +1186,18 @@
 [submodule "C/Roman Hodek/m68kboot"]
 	path = C/Roman Hodek/m68kboot
 	url = https://github.com/geertu/m68kboot.git
+[submodule "ASM/Synchron Assembly (SYNC)/DoubleST"]
+	path = ASM/Synchron Assembly (SYNC)/DoubleST
+	url = https://git.sync.wtf/troed/DoubleST.git
+[submodule "ASM/Synchron Assembly (SYNC)/SYNC-scroll"]
+	path = ASM/Synchron Assembly (SYNC)/SYNC-scroll
+	url = https://git.sync.wtf/sync/SYNC-scroll
+[submodule "ASM/Synchron Assembly (SYNC)/synctable"]
+	path = ASM/Synchron Assembly (SYNC)/synctable
+	url = https://git.sync.wtf/troed/synctable.git
+[submodule "ASM/Synchron Assembly (SYNC)/CLOCK"]
+	path = ASM/Synchron Assembly (SYNC)/CLOCK
+	url = https://git.sync.wtf/troed/CLOCK
+[submodule "ASM/Synchron Assembly (SYNC)/WSDETECT"]
+	path = ASM/Synchron Assembly (SYNC)/WSDETECT
+	url = https://git.sync.wtf/sync/WSDETECT
